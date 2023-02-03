@@ -4,6 +4,14 @@ from misc import Data, DataReader, concatenate_data
 from scipy.stats import pearsonr
 
 
+# TODO: Superposer CoP pour sauts avant et arrière
+# TODO: 2-3 sujets (séparés)
+#   # TODO: Trajectoire en antéropostérieur (contre temps) et vitesse et Force
+#   # TODO: Code couleur si gain/perte de hauteur (vert à rouge)
+# TODO: Découper en sous-phases (5?) d'impulsion
+# TODO: Apprentissage machine si on trouve rien
+
+
 def main():
     # ---- OPTIONS ---- #
     data_folder = "data"
