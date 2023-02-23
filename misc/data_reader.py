@@ -7,11 +7,12 @@ import numpy as np
 from .data import Data
 from .cop_data import CoPData
 from .force_sensor_data import ForceSensorData
+from .helpers import JumpType
 
 
 class DataReader:
     @staticmethod
-    def read_cycl_data(filepath) -> CoPData:
+    def read_cycl_data(filepath, jump_sequence: tuple[JumpType, ...]) -> CoPData:
         """
         Read the CYCL file which is the CoP coordinates of cyclogramme
 
@@ -19,18 +20,19 @@ class DataReader:
         ----------
         filepath
             The path of the file to read
-
+        jump_sequence
+            The expected sequence of jumps in the data
         Returns
         -------
         The parsed data in the file
         """
 
         return CoPData(
-            DataReader._read_csv(f"{filepath}_CYCL.CSV", nb_sensors=2, nb_headers_rows=1, conversion_factor=1 / 1000)
+            DataReader._read_csv(f"{filepath}_CYCL.CSV", nb_sensors=2, nb_headers_rows=1, conversion_factor=1 / 1000), jump_sequence=jump_sequence
         )
 
     @staticmethod
-    def read_sensor_data(filepath) -> ForceSensorData:
+    def read_sensor_data(filepath, jump_sequence: tuple[JumpType, ...]) -> ForceSensorData:
         """
         Read the GL file which is the CoP coordinate of gait line
 
@@ -38,6 +40,8 @@ class DataReader:
         ----------
         filepath
             The path of the file to read
+        jump_sequence
+            The expected sequence of jumps in the data
 
         Returns
         -------
@@ -51,7 +55,7 @@ class DataReader:
         both = Data()
         both.t = right.t
         both.y = (np.sum(right.y, axis=1) + np.sum(left.y, axis=1))[:, np.newaxis]
-        return ForceSensorData(both)
+        return ForceSensorData(both, jump_sequence=jump_sequence)
 
     @staticmethod
     def _read_csv(

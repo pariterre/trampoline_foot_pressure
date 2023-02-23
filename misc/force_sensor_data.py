@@ -5,10 +5,10 @@ from .helpers import integral
 
 
 class ForceSensorData(Data):
-    def __init__(self, data: Data):
+    def __init__(self, data: Data, **kwargs):
         data.y = np.sum(data.y, axis=1)[:, np.newaxis]
         data.y[data.y < 20] = np.nan
-        super().__init__(data=data)
+        super().__init__(data=data, **kwargs)
 
     def concatenate(self, other):
         """
@@ -23,7 +23,6 @@ class ForceSensorData(Data):
         -------
         The concatenated data
         """
-
         return ForceSensorData(super().concatenate(other))
 
     @property

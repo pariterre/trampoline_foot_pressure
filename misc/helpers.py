@@ -1,4 +1,23 @@
+from enum import Enum
+
 import numpy as np
+
+
+class PhaseType(Enum):
+    AERIAL = "aerial"
+    MAT = "mat"
+
+
+class JumpDirection(Enum):
+    FRONTWARD = "frontward"
+    BACKWARD = "backward"
+
+
+class JumpType(Enum):
+    BACK_SOMERSAULT_STRAIGHT = JumpDirection.BACKWARD
+    BACK_SOMERSAULT_TUCK = JumpDirection.BACKWARD
+    BARANI_STRAIGHT = JumpDirection.FRONTWARD
+    BARANI_TUCK = JumpDirection.FRONTWARD
 
 
 def concatenate_data(all_data: list):

@@ -6,8 +6,8 @@ from .helpers import derivative, integral
 
 
 class CoPData(Data):
-    def __init__(self, data: Data):
-        super().__init__(data=data)
+    def __init__(self, data: Data, **kwargs):
+        super().__init__(data=data, **kwargs)
         self.displacement = self._compute_cop_displacement(window=2)
         self.velocity = derivative(self.t, self.displacement, window=2)
         self.acceleration = derivative(self.t, self.velocity, window=2)
@@ -25,7 +25,6 @@ class CoPData(Data):
         -------
         The concatenated data
         """
-
         return CoPData(super().concatenate(other))
 
     @property

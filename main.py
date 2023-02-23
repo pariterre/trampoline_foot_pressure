@@ -1,6 +1,6 @@
 import os
 
-from misc import Data, DataReader, concatenate_data
+from misc import Data, DataReader, concatenate_data, JumpType, PhaseType, JumpDirection
 from scipy.stats import pearsonr
 
 
@@ -17,13 +17,23 @@ def main():
     data_folder = "data"
     figure_save_folder = "results/figures"
     subjects = ("sujet1",)
+    jump_sequence = (
+        JumpType.BACK_SOMERSAULT_STRAIGHT,
+        JumpType.BARANI_STRAIGHT,
+        JumpType.BACK_SOMERSAULT_TUCK,
+        JumpType.BARANI_TUCK,
+        JumpType.BACK_SOMERSAULT_TUCK,
+        JumpType.BARANI_TUCK,
+        JumpType.BACK_SOMERSAULT_STRAIGHT,
+        JumpType.BARANI_STRAIGHT,
+    )
     show_cop = False
     show_cop_displacement = True
-    show_cop_velocity = True
-    show_cop_acceleration = True
-    show_sensors = True
-    skip_huge_files = False
-    save_figures = True
+    show_cop_velocity = False
+    show_cop_acceleration = False
+    show_sensors = False
+    skip_huge_files = True
+    save_figures = False
     # ----------------- #
 
     if show_sensors and skip_huge_files:
@@ -41,14 +51,18 @@ def main():
         force_data = []
         for filename in filenames:
             # Load data
-            cycl_data.append(DataReader.read_cycl_data(f"{data_folder}/{subject}/{filename}"))
+            cycl_data.append(
+                DataReader.read_cycl_data(f"{data_folder}/{subject}/{filename}", jump_sequence=jump_sequence)
+            )
             force_data.append(
-                DataReader.read_sensor_data(f"{data_folder}/{subject}/{filename}") if not skip_huge_files else None
+                DataReader.read_sensor_data(f"{data_folder}/{subject}/{filename}", jump_sequence=jump_sequence) if not skip_huge_files else None
             )
 
         # Concatenated the data in a single matrix
         cycl_data = concatenate_data(cycl_data)
         force_data = concatenate_data(force_data) if not skip_huge_files else None
+
+        backward_jumps = cycl_data.filtered_data(phase=PhaseType.MAT, direction=JumpDirection.BACKWARD)
 
         # Print if required
         filename = "All data"
