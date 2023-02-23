@@ -10,21 +10,6 @@ class ForceSensorData(Data):
         data.y[data.y < 20] = np.nan
         super().__init__(data=data, **kwargs)
 
-    def concatenate(self, other):
-        """
-        Concatenate a data set to another, assuming the time of self is added as an offset to other
-
-        Parameters
-        ----------
-        other
-            The data to concatenate
-
-        Returns
-        -------
-        The concatenated data
-        """
-        return ForceSensorData(super().concatenate(other))
-
     @property
     def force_integral(self) -> tuple[float, ...]:
         """

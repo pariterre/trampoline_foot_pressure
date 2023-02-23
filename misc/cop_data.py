@@ -1,3 +1,5 @@
+from typing import Any
+
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -11,21 +13,6 @@ class CoPData(Data):
         self.displacement = self._compute_cop_displacement(window=2)
         self.velocity = derivative(self.t, self.displacement, window=2)
         self.acceleration = derivative(self.t, self.velocity, window=2)
-
-    def concatenate(self, other):
-        """
-        Concatenate a data set to another, assuming the time of self is added as an offset to other
-
-        Parameters
-        ----------
-        other
-            The data to concatenate
-
-        Returns
-        -------
-        The concatenated data
-        """
-        return CoPData(super().concatenate(other))
 
     @property
     def displacement_integral(self) -> tuple[float, ...]:
@@ -90,8 +77,10 @@ class CoPData(Data):
     def plot(
         self,
         override_y: np.ndarray = None,
+        fig: tuple[plt.figure, plt.axis] = None,
+        color: Any = None,
         **figure_options,
-    ) -> plt.figure:
+    ) -> tuple[plt.figure, plt.axis]:
         """
         Plot the data as XY position in an axis('equal') manner
 
@@ -99,6 +88,10 @@ class CoPData(Data):
         ----------
         override_y
             Force to plot this y data instead of the self.y attribute
+        fig
+            The handlers returned by a previous call of the plot function
+        color
+            Part of the figure_options
         figure_options
             see _prepare_figure inputs
 
@@ -107,7 +100,11 @@ class CoPData(Data):
         The matplotlib figure handler if show_now was set to False
         """
 
-        fig, ax, color, show_now = self._prepare_figure(**figure_options)
+        if fig is None:
+            pltfig, ax, color, show_now = self._prepare_figure(**figure_options, color=color)
+        else:
+            pltfig, ax = fig
+            show_now = False
 
         ax.plot(self.y[:, 0], self.y[:, 1], color=color)
         ax.axis("equal")
@@ -115,7 +112,7 @@ class CoPData(Data):
         if show_now:
             plt.show()
 
-        return fig if not show_now else None
+        return (pltfig, ax) if not show_now else None
 
     def plot_displacement(self, **figure_options) -> plt.figure:
         """

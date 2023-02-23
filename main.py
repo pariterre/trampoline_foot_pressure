@@ -1,10 +1,8 @@
 import os
 
-from misc import Data, DataReader, concatenate_data, JumpType, PhaseType, JumpDirection
-from scipy.stats import pearsonr
+from misc import Data, DataReader, JumpType, JumpDirection
 
 
-# TODO: Superposer CoP pour sauts avant et arrière
 # TODO: 2-3 sujets (séparés)
 #   # TODO: Trajectoire en antéropostérieur (contre temps) et vitesse et Force
 #   # TODO: Code couleur si gain/perte de hauteur (vert à rouge)
@@ -27,17 +25,10 @@ def main():
         JumpType.BACK_SOMERSAULT_STRAIGHT,
         JumpType.BARANI_STRAIGHT,
     )
-    show_cop = False
-    show_cop_displacement = True
-    show_cop_velocity = False
-    show_cop_acceleration = False
-    show_sensors = False
+    show_cop = True
     skip_huge_files = True
     save_figures = False
     # ----------------- #
-
-    if show_sensors and skip_huge_files:
-        raise ValueError("It is not possible to 'show_sensors' if 'skip_huge_files'")
 
     if save_figures:
         if not os.path.exists(figure_save_folder):
@@ -55,117 +46,43 @@ def main():
                 DataReader.read_cycl_data(f"{data_folder}/{subject}/{filename}", jump_sequence=jump_sequence)
             )
             force_data.append(
-                DataReader.read_sensor_data(f"{data_folder}/{subject}/{filename}", jump_sequence=jump_sequence) if not skip_huge_files else None
+                DataReader.read_sensor_data(f"{data_folder}/{subject}/{filename}", jump_sequence=jump_sequence)
+                if not skip_huge_files else None
             )
 
-        # Concatenated the data in a single matrix
-        cycl_data = concatenate_data(cycl_data)
-        force_data = concatenate_data(force_data) if not skip_huge_files else None
-
-        backward_jumps = cycl_data.filtered_data(phase=PhaseType.MAT, direction=JumpDirection.BACKWARD)
+        # Extract some data
+        backward_jumps = []
+        frontward_jumps = []
+        for data in cycl_data:
+            backward_jumps.extend(data.filtered_data(direction=JumpDirection.BACKWARD))
+            frontward_jumps.extend(data.filtered_data(direction=JumpDirection.FRONTWARD))
 
         # Print if required
-        filename = "All data"
+        # Concatenated the data in a single matrix to ease printing
         if show_cop:
-            fig_name = f"CoP ({filename})"
-            fig = cycl_data.plot(
-                figure=fig_name,
-                title="CoP",
-                x_label="X-coordinates (m)",
-                y_label="Y-coordinates (m)",
-                color="blue",
-            )
-            if save_figures:
-                fig.set_size_inches(16, 9)
-                fig.savefig(f"{figure_save_folder}/CoP.png", dpi=300)
+            for segmented_jumps in [backward_jumps, frontward_jumps]:
+                fig = None
+                fig_name = f"CoP ({segmented_jumps[0].jump_sequence[0].value})"
+                jumps_flight_times = [jump.flight_times[0] for jump in segmented_jumps]
+                min_flight_times = min(jumps_flight_times)
+                max_flight_times = max(jumps_flight_times)
+                range_flight_times = max_flight_times - min_flight_times
 
-        if show_cop_displacement:
-            fig_name = f"CoP displacement ({filename})"
-            fig = cycl_data.plot_displacement(
-                figure=fig_name,
-                title=f"CoP displacement (blue) and Jump time (orange)\n"
-                f"Integral correlation = {pearsonr(cycl_data.displacement_integral, cycl_data.flight_times[1:])[0]:0.3f}\n"
-                f"Ranges correlation = {pearsonr(cycl_data.displacement_ranges, cycl_data.flight_times[1:])[0]:0.3f}\n",
-                x_label="Time (s)",
-                y_label="CoP displacement (m)",
-                color="blue",
-            )
-            cycl_data.plot_flight_times(
-                figure=fig_name,
-                y_label="Jump time (s)",
-                axis_on_right=True,
-                color="orange",
-            )
-            if save_figures:
-                fig.set_size_inches(16, 9)
-                fig.savefig(f"{figure_save_folder}/CoP_displacement.png", dpi=300)
+                for i, jumps in enumerate(segmented_jumps):
+                    green_shift = (jumps.flight_times[0] - min_flight_times) / range_flight_times
+                    fig = jumps.plot(
+                        figure=fig_name,
+                        fig=fig,
+                        title=f"CoP ({segmented_jumps[0].jump_sequence[0].value})\nLonger flight time green shifted",
+                        x_label="X-coordinates (m)",
+                        y_label="Y-coordinates (m)",
+                        color=(1-green_shift, green_shift, 0, 1),
+                    )
+                if save_figures:
+                    fig[0].set_size_inches(16, 9)
+                    fig[0].savefig(f"{figure_save_folder}/CoP.png", dpi=300)
 
-        if show_cop_velocity:
-            fig_name = f"CoP Velocity ({filename})"
-            fig = cycl_data.plot_velocity(
-                figure=fig_name,
-                title=f"CoP velocity (blue) and Jump time (orange)\n"
-                f"Integral correlation = {pearsonr(cycl_data.velocity_integral, cycl_data.flight_times[1:])[0]:0.3f}\n"
-                f"Ranges correlation = {pearsonr(cycl_data.velocity_ranges, cycl_data.flight_times[1:])[0]:0.3f}\n",
-                x_label="Time (s)",
-                y_label="CoP velocity (m/s)",
-                color="blue",
-            )
-            cycl_data.plot_flight_times(
-                figure=fig_name,
-                y_label="Jump time (s)",
-                axis_on_right=True,
-                color="orange",
-            )
-            if save_figures:
-                fig.set_size_inches(16, 9)
-                fig.savefig(f"{figure_save_folder}/CoP_velocity.png", dpi=300)
-
-        if show_cop_acceleration:
-            fig_name = f"CoP Acceleration ({filename})"
-            fig = cycl_data.plot_acceleration(
-                figure=fig_name,
-                title=f"CoP acceleration (blue) and Jump time (orange)\n"
-                f"Integral correlation = {pearsonr(cycl_data.acceleration_integral, cycl_data.flight_times[1:])[0]:0.3f}\n"
-                f"Ranges correlation = {pearsonr(cycl_data.acceleration_ranges, cycl_data.flight_times[1:])[0]:0.3f}\n",
-                x_label="Time (s)",
-                y_label="CoP acceleration (m/s/s)",
-                y_lim=[-60, 200],
-                color="blue",
-            )
-            cycl_data.plot_flight_times(
-                figure=fig_name,
-                y_label="Jump time (s)",
-                y_lim=[1, 2],
-                axis_on_right=True,
-                color="orange",
-            )
-            if save_figures:
-                fig.set_size_inches(16, 9)
-                fig.savefig(f"{figure_save_folder}/CoP_acceleration.png", dpi=300)
-
-        if show_sensors:
-            fig_name = f"Forces ({filename})"
-            fig = force_data.plot(
-                figure=fig_name,
-                title="Sensor forces (blue) and Jump time (orange)\n"
-                f"Integral correlation = {pearsonr(force_data.force_integral, force_data.flight_times[1:])[0]:0.3f}\n",
-                x_label="Time (s)",
-                y_label="Force (N)",
-                color="blue",
-            )
-            force_data.plot_flight_times(
-                figure=fig_name,
-                y_label="Jump time (s)",
-                y_lim=[1, 2],
-                axis_on_right=True,
-                color="orange",
-            )
-            if save_figures:
-                fig.set_size_inches(16, 9)
-                fig.savefig(f"{figure_save_folder}/forces.png", dpi=300)
-
-        if show_cop or show_cop_displacement or show_cop_velocity or show_cop_acceleration or show_sensors:
+        if show_cop:
             Data.show()
 
 

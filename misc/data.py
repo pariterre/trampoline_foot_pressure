@@ -45,7 +45,7 @@ class Data:
 
         # Sanity check
         if self.jump_sequence is not None and (
-            sum(np.isfinite(self.landings_indices)) != len(self.jump_sequence) or sum(np.isfinite(self.takeoffs_indices)) != len(self.jump_sequence)
+            self.landings_indices.shape[0] != len(self.jump_sequence) + 1 or self.takeoffs_indices.shape[0] != len(self.jump_sequence) + 1
         ):
             raise RuntimeError(
                 "The number of jumps in the trials does not correspond to the number of jumps in the provided sequence"
@@ -69,61 +69,12 @@ class Data:
         y = [data * self.conversion_factor if data != 2147483647 else np.nan for data in y]
         self.y = np.concatenate((self.y, (y,)))
 
-    def concatenate(self, other):
-        """
-        Concatenate a data set to another, assuming the time of self is added as an offset to other
-
-        Parameters
-        ----------
-        other
-            The data to concatenate
-
-        Returns
-        -------
-        The concatenated data
-        """
-
-        out = Data(data=self, jump_sequence=self.jump_sequence)
-        time_offset = out.t[-1]
-
-        previous_t = out.t
-        previous_takeoffs_indices = out.takeoffs_indices
-        out.t = np.concatenate((out.t, time_offset + other.t))
-        out.y = np.concatenate((out.y, other.y))
-        out.landings_indices = np.concatenate(
-            (
-                out.landings_indices[np.isfinite(out.landings_indices)],
-                other.landings_indices[np.isfinite(other.landings_indices)] + previous_t.shape[0]
-            )
-        )
-        out.takeoffs_indices = np.concatenate(
-            (
-                out.takeoffs_indices[np.isfinite(out.takeoffs_indices)],
-                other.takeoffs_indices[np.isfinite(other.takeoffs_indices)] + previous_t.shape[0]
-            )
-        )
-
-        # Take into account the case of only mat indices are presents
-        if np.isnan(previous_takeoffs_indices[0]):
-            out.takeoffs_indices = np.concatenate(((np.nan, ), out.takeoffs_indices))
-        if np.isnan(other.landings_indices[-1]):
-            out.landings_indices = np.concatenate((out.landings_indices, (np.nan, )))
-
-        out.jump_sequence = self.jump_sequence + other.jump_sequence
-        # Sanity check
-        if sum(np.isfinite(self.landings_indices)) != len(self.jump_sequence) or sum(np.isfinite(self.takeoffs_indices)) != len(self.jump_sequence):
-            raise RuntimeError(
-                "The number of jumps in the trials does not correspond to the number of jumps in the provided sequence"
-            )
-
-        return out
-
     @property
     def flight_indices(self) -> tuple[tuple[int, int], ...]:
         """
         Return the indices of flights in the order of takeoff/landing
         """
-        return tuple(zip(np.array(self.takeoffs_indices, dtype=np.int64), np.array(self.landings_indices, dtype=np.int64)))
+        return tuple(zip(self.takeoffs_indices[:-1], self.landings_indices[1:]))
 
     @property
     def flight_times(self) -> tuple[float, ...]:
@@ -137,25 +88,24 @@ class Data:
         """
         Return the indices of landed in the order of landing/takeoff
         """
-        return tuple(zip(np.array(self.landings_indices[:-1], dtype=np.int64), np.array(self.takeoffs_indices[1:], dtype=np.int64)))
+        return tuple(zip(self.landings_indices, self.takeoffs_indices))
 
     @property
     def mat_times(self) -> tuple[float, ...]:
         """
         Get the times in the mat
         """
-        return tuple(self.t[takeoff - 1] - self.t[landing] for landing, takeoff in self.mat_indices)
+        # Last pair of indices are for the final landing which has no time
+        return tuple(self.t[takeoff - 1] - self.t[landing] for landing, takeoff in self.mat_indices[:-1])
 
     def filtered_data(
-        self, phase: PhaseType, direction: JumpDirection = None, jump_type: JumpType = None
+        self, direction: JumpDirection = None, jump_type: JumpType = None
     ) -> tuple["Data", ...]:
         """
         Filters the data
 
         Parameters
         ----------
-        phase
-            The phase (on mat or in air) to extract
         direction
             The direction of jump to return. If 'None', all JumpDirection are returned
         jump_type
@@ -166,42 +116,30 @@ class Data:
         A tuple of tuples all the jumps data that corresponds to the criteria. The type of the data is the same as
         the original one
         """
-        if phase == PhaseType.MAT:
-            all_indices = self.mat_indices
-        elif phase == PhaseType.AERIAL:
-            all_indices = self.flight_indices
-        else:
-            raise ValueError("Wrong value for phase")
-
         out = []
-        for jump, indices in zip(self.jump_sequence, all_indices):
+        for i, jump in enumerate(self.jump_sequence):
             if jump_type is not None and jump != jump_type:
                 continue
             if direction is not None and jump.value != direction:
                 continue
 
             tp = Data(conversion_factor=self.conversion_factor)
-            start, finish = indices
+            start, finish = self.landings_indices[i], self.landings_indices[i + 1]
             tp.t = self.t[start:finish]
             tp.y = self.y[start:finish, :]
             tp.jump_sequence = (jump,)
-            if phase == PhaseType.MAT:
-                tp.takeoffs_indices = np.array((np.nan, tp.y.shape[0]))
-                tp.landings_indices = np.array((0, np.nan))
-            elif phase == PhaseType.AERIAL:
-                tp.takeoffs_indices = np.array((0, ))
-                tp.landings_indices = np.array((tp.y.shape[0], ))
-            else:
-                raise ValueError("Wrong value for phase")
-            tp = type(self)(tp)  # Up cast the data to the same format as self
-            out.append(tp)
+            tp.landings_indices = np.array((0, tp.y.shape[0]))
+            tp.takeoffs_indices = np.array((self.takeoffs_indices[i] - self.landings_indices[i], None))
+
+            out.append(type(self)(tp))  # Up cast the data to the same format as self
         return tuple(out)
 
     def plot(
         self,
         override_y: np.ndarray = None,
+        fig: tuple[plt.figure, plt.axis] = None,
         **figure_options,
-    ) -> plt.figure:
+    ) -> tuple[plt.figure, plt.axis]:
         """
         Plot the data as time dependent variables
 
@@ -209,6 +147,8 @@ class Data:
         ----------
         override_y
             Force to plot this y data instead of the one in the self.y attribute
+        fig
+            The handlers returned by a previous call of the plot function
         figure_options
             see _prepare_figure inputs
 
@@ -224,7 +164,7 @@ class Data:
         if show_now:
             plt.show()
 
-        return fig if not show_now else None
+        return (fig, ax) if not show_now else None
 
     def plot_flight_times(self, factor: float = 1, **figure_options) -> plt.figure:
         """
@@ -370,15 +310,17 @@ class Data:
         landings_indices = np.where(events == -1)[0]
         takeoffs_indices = np.where(events == 1)[0]
 
-        if not takeoffs_indices.any() and not landings_indices.any():
-            # If nothing is found, it is okay
+        if not landings_indices.any() and takeoffs_indices.shape[0] == 1:
+            # This can happen if the trial is precisely cut from the landing to next landing of exactly 1 trial
             return takeoffs_indices, landings_indices
 
         # Remove starting and ending artifacts and perform sanity check
-        if landings_indices[0] < takeoffs_indices[0]:
-            landings_indices = landings_indices[1:]
-        if takeoffs_indices[-1] > landings_indices[-1]:
+        if landings_indices[0] > takeoffs_indices[0]:  # Trial starts when the subject first hit the mat
+            takeoffs_indices = takeoffs_indices[1:]
+        if takeoffs_indices[-1] > landings_indices[-1]:  # The trial ends when the subject last hit the mat
             takeoffs_indices = takeoffs_indices[:-1]
+        takeoffs_indices = np.concatenate((takeoffs_indices, (None, )))  # Add a None for shape consistency
+
         if len(takeoffs_indices) != len(landings_indices):
             raise RuntimeError(
                 f"The number of takeoffs ({len(takeoffs_indices)} is not equal "
