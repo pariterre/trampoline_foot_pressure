@@ -7,12 +7,12 @@ import numpy as np
 from .data import Data
 from .cop_data import CoPData
 from .force_sensor_data import ForceSensorData
-from .helpers import JumpType
+from .helpers import JumpName
 
 
 class DataReader:
     @staticmethod
-    def read_cycl_data(filepath, jump_sequence: tuple[JumpType, ...]) -> CoPData:
+    def read_cycl_data(filepath, jump_sequence: tuple[JumpName, ...]) -> CoPData:
         """
         Read the CYCL file which is the CoP coordinates of cyclogramme
 
@@ -32,7 +32,7 @@ class DataReader:
         )
 
     @staticmethod
-    def read_sensor_data(filepath, jump_sequence: tuple[JumpType, ...]) -> ForceSensorData:
+    def read_sensor_data(filepath, jump_sequence: tuple[JumpName, ...]) -> ForceSensorData:
         """
         Read the GL file which is the CoP coordinate of gait line
 

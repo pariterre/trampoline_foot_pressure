@@ -1,5 +1,3 @@
-from typing import Any
-
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -76,9 +74,9 @@ class CoPData(Data):
 
     def plot(
         self,
+        override_x: np.ndarray = None,
         override_y: np.ndarray = None,
         fig: tuple[plt.figure, plt.axis] = None,
-        color: Any = None,
         **figure_options,
     ) -> tuple[plt.figure, plt.axis]:
         """
@@ -86,12 +84,12 @@ class CoPData(Data):
 
         Parameters
         ----------
+        override_x
+            Force to plot this x data instead of the self.y[:, 0] attribute
         override_y
-            Force to plot this y data instead of the self.y attribute
+            Force to plot this y data instead of the self.y[:, 1] attribute
         fig
             The handlers returned by a previous call of the plot function
-        color
-            Part of the figure_options
         figure_options
             see _prepare_figure inputs
 
@@ -100,19 +98,14 @@ class CoPData(Data):
         The matplotlib figure handler if show_now was set to False
         """
 
-        if fig is None:
-            pltfig, ax, color, show_now = self._prepare_figure(**figure_options, color=color)
-        else:
-            pltfig, ax = fig
-            show_now = False
+        should_axis_equal = override_x is None and override_y is None
 
-        ax.plot(self.y[:, 0], self.y[:, 1], color=color)
-        ax.axis("equal")
-
-        if show_now:
-            plt.show()
-
-        return (pltfig, ax) if not show_now else None
+        x = self.y[:, 0] if override_x is None else override_x
+        y = self.y[:, 1] if override_y is None else override_y
+        out = super().plot(override_x=x, override_y=y, fig=fig, **figure_options)
+        if should_axis_equal:
+            out[1].axis("equal")
+        return out
 
     def plot_displacement(self, **figure_options) -> plt.figure:
         """

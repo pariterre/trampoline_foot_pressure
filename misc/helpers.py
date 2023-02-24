@@ -13,11 +13,21 @@ class JumpDirection(Enum):
     BACKWARD = "backward"
 
 
-class JumpType(Enum):
-    BACK_SOMERSAULT_STRAIGHT = JumpDirection.BACKWARD
-    BACK_SOMERSAULT_TUCK = JumpDirection.BACKWARD
-    BARANI_STRAIGHT = JumpDirection.FRONTWARD
-    BARANI_TUCK = JumpDirection.FRONTWARD
+class JumpPosition(Enum):
+    TUCK = "tuck"
+    STRAIGHT = "straight"
+
+
+class JumpCategory(Enum):
+    SOMERSAULT = "somersault"
+    BARANI = "Barani"
+
+
+class JumpName(Enum):
+    BACK_SOMERSAULT_STRAIGHT = (JumpDirection.BACKWARD, JumpCategory.SOMERSAULT, JumpPosition.STRAIGHT)
+    BACK_SOMERSAULT_TUCK = (JumpDirection.BACKWARD, JumpCategory.SOMERSAULT, JumpPosition.TUCK)
+    BARANI_STRAIGHT = (JumpDirection.FRONTWARD, JumpCategory.BARANI, JumpPosition.STRAIGHT)
+    BARANI_TUCK = (JumpDirection.FRONTWARD, JumpCategory.BARANI, JumpPosition.TUCK)
 
 
 def derivative(t: np.ndarray, data: np.ndarray, window: int = 1) -> np.ndarray:

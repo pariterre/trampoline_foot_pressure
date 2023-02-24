@@ -1,12 +1,14 @@
+from typing import Any
+
 from matplotlib import pyplot as plt
 import numpy as np
 
-from .helpers import JumpType, JumpDirection, PhaseType
+from .helpers import JumpName, JumpDirection, JumpPosition, JumpCategory
 
 
 class Data:
     def __init__(
-        self, data=None, jump_sequence: tuple[JumpType, ...] = None, nb_sensors: int = 0, conversion_factor: float = 1
+        self, data=None, jump_sequence: tuple[JumpName, ...] = None, nb_sensors: int = 0, conversion_factor: float = 1
     ):
         """
         Create a Data structure with 't' as time vector holder and 'y' as data holder
@@ -99,7 +101,12 @@ class Data:
         return tuple(self.t[takeoff - 1] - self.t[landing] for landing, takeoff in self.mat_indices[:-1])
 
     def filtered_data(
-        self, direction: JumpDirection = None, jump_type: JumpType = None
+        self,
+        direction:
+        JumpDirection = None,
+        name: JumpName = None,
+        position: JumpPosition = None,
+        category: JumpCategory = None,
     ) -> tuple["Data", ...]:
         """
         Filters the data
@@ -108,8 +115,12 @@ class Data:
         ----------
         direction
             The direction of jump to return. If 'None', all JumpDirection are returned
-        jump_type
+        name
             The type of jump to return. If 'None', all JumpType are returned
+        position
+            The position of the jump. If 'None', all positions are returned
+        category
+            The category of the jump. If 'None', all categories are returned
 
         Returns
         -------
@@ -118,9 +129,13 @@ class Data:
         """
         out = []
         for i, jump in enumerate(self.jump_sequence):
-            if jump_type is not None and jump != jump_type:
+            if name is not None and jump != name:
                 continue
-            if direction is not None and jump.value != direction:
+            if direction is not None and jump.value[0] != direction:
+                continue
+            if category is not None and jump.value[1] != category:
+                continue
+            if position is not None and jump.value[2] != position:
                 continue
 
             tp = Data(conversion_factor=self.conversion_factor)
@@ -136,8 +151,10 @@ class Data:
 
     def plot(
         self,
+        override_x: np.ndarray = None,
         override_y: np.ndarray = None,
         fig: tuple[plt.figure, plt.axis] = None,
+        color: Any = None,
         **figure_options,
     ) -> tuple[plt.figure, plt.axis]:
         """
@@ -145,10 +162,14 @@ class Data:
 
         Parameters
         ----------
+        override_x
+            Force to plot this x data instead of the self.t attribute
         override_y
             Force to plot this y data instead of the one in the self.y attribute
         fig
             The handlers returned by a previous call of the plot function
+        color
+            Part of the figure_options
         figure_options
             see _prepare_figure inputs
 
@@ -157,14 +178,20 @@ class Data:
         The matplotlib figure handler if show_now was set to False
         """
 
-        fig, ax, color, show_now = self._prepare_figure(**figure_options)
+        if fig is None:
+            pltfig, ax, color, show_now = self._prepare_figure(color=color, **figure_options)
+        else:
+            pltfig, ax = fig
+            show_now = False
 
-        ax.plot(self.t, override_y if override_y is not None else self.y, color=color)
+        x = self.t if override_x is None else override_x
+        y = self.y if override_y is None else override_y
+        ax.plot(x, y, color=color)
 
         if show_now:
             plt.show()
 
-        return (fig, ax) if not show_now else None
+        return (pltfig, ax) if not show_now else None
 
     def plot_flight_times(self, factor: float = 1, **figure_options) -> plt.figure:
         """
