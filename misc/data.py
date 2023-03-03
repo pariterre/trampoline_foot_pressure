@@ -50,7 +50,7 @@ class Data:
             self.landings_indices.shape[0] != len(self.jump_sequence) + 1 or self.takeoffs_indices.shape[0] != len(self.jump_sequence) + 1
         ):
             raise RuntimeError(
-                "The number of jumps in the trials does not correspond to the number of jumps in the provided sequence"
+                "The number of jumps in the trial does not correspond to the number of jumps in the provided sequence"
             )
 
     def append(self, t, y) -> None:

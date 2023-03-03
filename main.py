@@ -10,15 +10,26 @@ from misc import Data, DataReader, JumpName, JumpDirection, JumpCategory, JumpPo
 
 # ---- OPTIONS ---- #
 data_folder = "data"
-figure_save_folder = "results/figures"
-subjects = ("sujet1",)
-forces_black_list_files = (
-    "13815_9.23.2022_13.42.17",
-    "13818_9.23.2022_15.14.29",
-    "13833_9.23.2022_12.51.15",
-    "13835_9.24.2022_13.18.26",
-    "13842_9.23.2022_12.57.53",
+save_folder = "results"
+subjects = (
+    "sujet1",
+    "sujet2",
 )
+forces_black_list_files = {
+    "sujet1": (
+        "13815_9.23.2022_13.42.17",
+        "13818_9.23.2022_15.14.29",
+        "13833_9.23.2022_12.51.15",
+        "13835_9.24.2022_13.18.26",
+        "13842_9.23.2022_12.57.53",
+    ),
+    "sujet2": (
+        "13826_9.24.2022_13.27.25",
+        "13835_9.24.2022_13.18.26",
+        "13838_9.24.2022_14.56.02",
+        "18837_9.24.2022_13.48.37",
+    ),
+}
 # jump_filter = {"category": JumpCategory.BARANI, "position": JumpPosition.STRAIGHT}
 # jump_filter = {"category": JumpCategory.BARANI}
 # jump_filter = {"position": JumpPosition.TUCK}
@@ -34,8 +45,8 @@ jump_sequence = (
     JumpName.BACK_SOMERSAULT_STRAIGHT,
     JumpName.BARANI_STRAIGHT,
 )
-show_cop = False
-show_y_movement = False
+show_cop = True
+show_y_movement = True
 show_force_velocity = True
 skip_huge_files = False
 save_figures = True
@@ -47,18 +58,19 @@ def main():
     if show_force_velocity and skip_huge_files:
         raise RuntimeError("'show_force_velocity' requires to 'skip_huge_files' to be 'False'")
 
-    if save_figures:
-        if not os.path.exists(figure_save_folder):
-            os.makedirs(figure_save_folder)
-
     for subject in subjects:
+        figure_save_folder = f"{save_folder}/figures/{subject}"
+        if save_figures:
+            if not os.path.exists(figure_save_folder):
+                os.makedirs(figure_save_folder)
+
         folder = f"{data_folder}/{subject}"
         filenames = DataReader.fetch_trial_names(folder)
 
         cycl_data = []
         force_data = []
         for filename in filenames:
-            if not skip_huge_files and filename in forces_black_list_files:
+            if not skip_huge_files and filename in forces_black_list_files[subject]:
                 continue
             # Load data
             cycl_data.append(
@@ -101,7 +113,7 @@ def main():
 
             if show_cop:
                 fig = None
-                fig_name = f"CoP ({condition_name})"
+                fig_name = f"CoP ({condition_name}, Subject: {subject})"
                 for i, jump in enumerate(jumps_cycl):
                     green_shift = (jump.flight_times[0] - min_flight_times) / range_flight_times
                     fig = jump.plot(
@@ -118,7 +130,7 @@ def main():
 
             if show_y_movement:
                 fig = None
-                fig_name = f"Anteroposterior ({condition_name})"
+                fig_name = f"Anteroposterior ({condition_name}, Subject: {subject})"
                 for i, jump in enumerate(jumps_cycl):
                     green_shift = (jump.flight_times[0] - min_flight_times) / range_flight_times
                     fig = jump.plot(
@@ -137,7 +149,7 @@ def main():
 
             if show_force_velocity:
                 fig = None
-                fig_name = f"Forces ({condition_name})"
+                fig_name = f"Forces ({condition_name}, Subject: {subject})"
                 for i, (jump_cycl, jump_forces) in enumerate(zip(jumps_cycl, jumps_forces)):
                     green_shift = (jump_cycl.flight_times[0] - min_flight_times) / range_flight_times
                     fig = jump_forces.plot(
@@ -153,8 +165,8 @@ def main():
                     fig[0].set_size_inches(16, 9)
                     fig[0].savefig(f"{figure_save_folder}/forces_{condition_name}.png", dpi=300)
 
-        if show_cop or show_y_movement or show_force_velocity:
-            Data.show()
+    if show_cop or show_y_movement or show_force_velocity:
+        Data.show()
 
 
 if __name__ == "__main__":

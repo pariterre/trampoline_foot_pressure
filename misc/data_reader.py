@@ -117,6 +117,8 @@ class DataReader:
         """
 
         all_filenames = [f for f in os.listdir(folder) if os.path.isfile(os.path.join(folder, f))]
-        root_names = [re.split(r"^([0-9_.]*)_([a-zA-Z_.]*)(.CSV)$", filename)[1] for filename in all_filenames]
+        root_names = []
+        for filename in all_filenames:
+            root_names.append(re.split(r"^([0-9_.]*)_([a-zA-Z_.]*)(.CSV)$", filename)[1])
         unique_names = set(root_names)
         return tuple(sorted(unique_names))
